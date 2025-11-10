@@ -1,0 +1,40 @@
+### Test 1: Call API without token (should get 401 Unauthorized)
+POST http://localhost:5159/api/CardPayment/validate
+Content-Type: application/json
+
+{
+  "cardNumber": "4532015112830366"
+}
+
+### Test 2: Call API with invalid token (should get 403 Forbidden)
+POST http://localhost:5159/api/CardPayment/validate
+Content-Type: application/json
+Authorization: Bearer invalid-token-xyz
+
+{
+  "cardNumber": "4532015112830366"
+}
+
+### Test 3: Call API with valid token (should get 200 OK)
+POST http://localhost:5159/api/CardPayment/validate
+Content-Type: application/json
+Authorization: Bearer dev-token-123456
+
+{
+  "cardNumber": "4532015112830366"
+}
+
+### Test 4: Call API with valid token without Bearer prefix (should get 200 OK)
+POST http://localhost:5159/api/CardPayment/validate
+Content-Type: application/json
+Authorization: test-token-abcdef
+
+{
+  "cardNumber": "5425233430109903"
+}
+
+### Test 5: Health check without token (should get 200 OK - no auth required)
+GET http://localhost:5159/api/CardPayment/health
+
+### Test 6: Swagger UI (should be accessible without token)
+GET http://localhost:5159/swagger/index.html

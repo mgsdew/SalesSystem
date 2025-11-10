@@ -1,0 +1,162 @@
+version: '3.8'
+
+# SalesSystem - Microservices Docker Compose Configuration
+# This file orchestrates all microservices in the SalesSystem solution
+
+services:
+  # ============================================
+  # Database Services
+  # ============================================
+  
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: salessystem-sqlserver
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=YourStrong@Password123
+      - MSSQL_PID=Developer
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+    networks:
+      - salessystem-network
+    restart: unless-stopped
+    healthcheck:
+      test: /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P YourStrong@Password123 -Q "SELECT 1" || exit 1
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  # Redis for caching (future use)
+  redis:
+    image: redis:7-alpine
+    container_name: salessystem-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - salessystem-network
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ============================================
+  # Microservices
+  # ============================================
+
+  # Payment API - Credit Card Validation Service
+  paymentapi:
+    build:
+      context: ./PaymentAPI
+      dockerfile: Dockerfile
+    container_name: salessystem-paymentapi
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=PaymentDB;User Id=sa;Password=YourStrong@Password123;TrustServerCertificate=True;MultipleActiveResultSets=true
+      - AUTH_VALID_TOKENS=${AUTH_VALID_TOKENS}
+    env_file:
+      - .env
+    ports:
+      - "5159:80"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    networks:
+      - salessystem-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/api/CardPayment/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Future Microservices (commented out until implemented)
+
+  # # Order API - Order Management Service
+  # orderapi:
+  #   build:
+  #     context: ./OrderAPI
+  #     dockerfile: Dockerfile
+  #   container_name: salessystem-orderapi
+  #   environment:
+  #     - ASPNETCORE_ENVIRONMENT=Development
+  #     - ASPNETCORE_URLS=http://+:80
+  #     - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=OrderDB;User Id=sa;Password=YourStrong@Password123;TrustServerCertificate=True;MultipleActiveResultSets=true
+  #   env_file:
+  #     - .env
+  #   ports:
+  #     - "5160:80"
+  #   depends_on:
+  #     sqlserver:
+  #       condition: service_healthy
+  #   networks:
+  #     - salessystem-network
+  #   restart: unless-stopped
+
+  # # User API - Authentication & User Management Service
+  # userapi:
+  #   build:
+  #     context: ./UserAPI
+  #     dockerfile: Dockerfile
+  #   container_name: salessystem-userapi
+  #   environment:
+  #     - ASPNETCORE_ENVIRONMENT=Development
+  #     - ASPNETCORE_URLS=http://+:80
+  #     - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=UserDB;User Id=sa;Password=YourStrong@Password123;TrustServerCertificate=True;MultipleActiveResultSets=true
+  #   env_file:
+  #     - .env
+  #   ports:
+  #     - "5161:80"
+  #   depends_on:
+  #     sqlserver:
+  #       condition: service_healthy
+  #   networks:
+  #     - salessystem-network
+  #   restart: unless-stopped
+
+  # # Product API - Product Catalog Service
+  # productapi:
+  #   build:
+  #     context: ./ProductAPI
+  #     dockerfile: Dockerfile
+  #   container_name: salessystem-productapi
+  #   environment:
+  #     - ASPNETCORE_ENVIRONMENT=Development
+  #     - ASPNETCORE_URLS=http://+:80
+  #     - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=ProductDB;User Id=sa;Password=YourStrong@Password123;TrustServerCertificate=True;MultipleActiveResultSets=true
+  #   env_file:
+  #     - .env
+  #   ports:
+  #     - "5162:80"
+  #   depends_on:
+  #     sqlserver:
+  #       condition: service_healthy
+  #   networks:
+  #     - salessystem-network
+  #   restart: unless-stopped
+
+# ============================================
+# Networks
+# ============================================
+networks:
+  salessystem-network:
+    driver: bridge
+    name: salessystem-network
+
+# ============================================
+# Volumes
+# ============================================
+volumes:
+  sqlserver-data:
+    name: salessystem-sqlserver-data
+  redis-data:
+    name: salessystem-redis-data
