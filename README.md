@@ -244,15 +244,12 @@ Each microservice follows a clean architecture pattern:
 | **Moq** | Mocking framework |
 | **FluentAssertions** | Readable assertions |
 | **Microsoft.AspNetCore.Mvc.Testing** | Integration testing |
-| **TestContainers** | Database testing (planned) |
 
 ### Monitoring & Logging
 | Tool | Purpose |
 |------|---------|
 | **Serilog** | Structured logging |
-| **Application Insights** | APM and monitoring |
-| **ELK Stack** | Log aggregation (planned) |
-| **Prometheus + Grafana** | Metrics (planned) |
+| **Application Insights** | APM and monitoring ||
 
 ### Security
 | Component | Implementation |
@@ -355,6 +352,21 @@ LOG_LEVEL=Information
 # Environment
 ASPNETCORE_ENVIRONMENT=Development
 ```
+
+### Running from Visual Studio / Rider / VS Code
+
+Each microservice loads environment variables from the parent `.env` file automatically:
+
+1. Open the microservice project (e.g., `PaymentAPI/PaymentAPI.sln`) in your IDE
+2. Press **F5** to run with debugging or **Ctrl+F5** without debugging
+3. Environment variables from `../../.env` are loaded at startup automatically
+4. Swagger UI opens automatically in Development mode
+
+**Requirements:**
+- **DotNetEnv** package installed (already configured)
+- `.env` file exists in solution root
+- `ASPNETCORE_ENVIRONMENT=Development` in `launchSettings.json` for Swagger
+- No need to manually set environment variables in IDE
 
 
 ## 🔒 Security & Production Notes

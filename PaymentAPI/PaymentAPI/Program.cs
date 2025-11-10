@@ -5,8 +5,16 @@ using PaymentAPI.Repositories.Interfaces;
 using PaymentAPI.Middleware;
 using Microsoft.OpenApi.Models;
 using System.Reflection;
+using DotNetEnv;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Load environment variables from parent .env file if it exists
+var envPath = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", ".env");
+if (File.Exists(envPath))
+{
+    Env.Load(envPath);
+}
 
 // Add services to the container
 builder.Services.AddControllers();
@@ -94,7 +102,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI(options =>
     {
         options.SwaggerEndpoint("/swagger/v1/swagger.json", "Payment API v1");
-        options.RoutePrefix = string.Empty; // Serve Swagger UI at the app's root
+       // options.RoutePrefix = string.Empty; // Serve Swagger UI at the app's root
     });
 }
 
