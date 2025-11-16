@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
 using PaymentAPI.Models.DTOs;
+using PaymentAPI.Models.Entities;
 using PaymentAPI.Repositories.Interfaces;
 using PaymentAPI.Services;
 using Xunit;
@@ -95,17 +96,17 @@ public class CardPaymentServiceTests
     #region DetermineCardType Tests
 
     [Theory]
-    [InlineData("4532015112830366", "Visa")]
-    [InlineData("4111111111111111", "Visa")]
-    [InlineData("5425233430109903", "MasterCard")]
-    [InlineData("5555555555554444", "MasterCard")]
-    [InlineData("2221000000000009", "MasterCard")] // New MasterCard range
-    [InlineData("374245455400126", "American Express")]
-    [InlineData("371449635398431", "American Express")]
-    [InlineData("6011111111111117", "Discover")]
-    [InlineData("6500000000000002", "Discover")]
-    [InlineData("9999999999999999", "Unknown")]
-    public void DetermineCardType_Should_ReturnCorrectCardType(string cardNumber, string expectedCardType)
+    [InlineData("4532015112830366", CardType.Visa)]
+    [InlineData("4111111111111111", CardType.Visa)]
+    [InlineData("5425233430109903", CardType.MasterCard)]
+    [InlineData("5555555555554444", CardType.MasterCard)]
+    [InlineData("2221000000000009", CardType.MasterCard)] // New MasterCard range
+    [InlineData("374245455400126", CardType.AmericanExpress)]
+    [InlineData("371449635398431", CardType.AmericanExpress)]
+    [InlineData("6011111111111117", CardType.Discover)]
+    [InlineData("6500000000000002", CardType.Discover)]
+    [InlineData("9999999999999999", CardType.Unknown)]
+    public void DetermineCardType_Should_ReturnCorrectCardType(string cardNumber, CardType expectedCardType)
     {
         // Act
         var result = _service.DetermineCardType(cardNumber);
@@ -124,7 +125,7 @@ public class CardPaymentServiceTests
         var result = _service.DetermineCardType(cardNumber);
 
         // Assert
-        result.Should().Be("Unknown");
+        result.Should().Be(CardType.Unknown);
     }
 
     #endregion
@@ -149,7 +150,7 @@ public class CardPaymentServiceTests
         // Assert
         result.Should().NotBeNull();
         result.IsValid.Should().BeTrue();
-        result.CardType.Should().Be("Visa");
+        result.CardType.Should().Be(CardType.Visa);
         result.MaskedCardNumber.Should().Be("************0366");
         result.Message.Should().Be("Card number is valid");
         result.ValidatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
@@ -198,9 +199,11 @@ public class CardPaymentServiceTests
 
         PaymentAPI.Models.Entities.CardPayment savedCardPayment = null;
 
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type
         _mockRepository.Setup(r => r.SaveAsync(It.IsAny<PaymentAPI.Models.Entities.CardPayment>(), It.IsAny<CancellationToken>()))
             .Callback<PaymentAPI.Models.Entities.CardPayment, CancellationToken>((cp, ct) => savedCardPayment = cp)
             .ReturnsAsync((PaymentAPI.Models.Entities.CardPayment cp, CancellationToken ct) => cp);
+#pragma warning restore CS8625
 
         // Act
         await _service.ValidateCardAsync(request);
@@ -209,7 +212,7 @@ public class CardPaymentServiceTests
         savedCardPayment.Should().NotBeNull();
         savedCardPayment.CardNumber.Should().Be(request.CardNumber);
         savedCardPayment.IsValid.Should().BeTrue();
-        savedCardPayment.CardType.Should().Be("MasterCard");
+        savedCardPayment.CardType.Should().Be(CardType.MasterCard);
         savedCardPayment.Id.Should().NotBe(Guid.Empty);
     }
 
@@ -228,8 +231,10 @@ public class CardPaymentServiceTests
         _mockRepository.Setup(r => r.SaveAsync(It.IsAny<PaymentAPI.Models.Entities.CardPayment>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new TaskCanceledException());
 
+#pragma warning disable CS8600 // Converting null literal or possible null value to non-nullable type
         // Act & Assert
         await Assert.ThrowsAsync<TaskCanceledException>(() => _service.ValidateCardAsync(request, cts.Token));
+#pragma warning restore CS8600
     }
 
     #endregion

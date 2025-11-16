@@ -37,4 +37,12 @@ public interface ICardPaymentRepository
     /// <param name="cancellationToken">Cancellation token for async operation.</param>
     /// <returns>A task that represents the asynchronous operation. The task result indicates whether the deletion was successful.</returns>
     Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Deletes card payment validation records by card number asynchronously.
+    /// </summary>
+    /// <param name="cardNumber">The card number to delete records for.</param>
+    /// <param name="cancellationToken">Cancellation token for async operation.</param>
+    /// <returns>A task that represents the asynchronous operation. The task result indicates whether any records were deleted.</returns>
+    Task<bool> DeleteByCardNumberAsync(string cardNumber, CancellationToken cancellationToken = default);
 }

@@ -489,7 +489,7 @@ Each microservice has its own test project:
 
 ## 📄 License
 
-This project is created for portfolio and demonstration purposes.
+This project is created for portfolio and demonstration purposes, and if you found it useful, please consider supporting the project by leaving a star on GitHub.
 
 ---
 

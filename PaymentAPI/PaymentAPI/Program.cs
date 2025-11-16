@@ -3,9 +3,12 @@ using PaymentAPI.Services.Interfaces;
 using PaymentAPI.Repositories;
 using PaymentAPI.Repositories.Interfaces;
 using PaymentAPI.Middleware;
+using PaymentAPI.Data;
 using Microsoft.OpenApi.Models;
 using System.Reflection;
 using DotNetEnv;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.InMemory;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,9 +22,13 @@ if (File.Exists(envPath))
 // Add services to the container
 builder.Services.AddControllers();
 
+// Add DbContext
+builder.Services.AddDbContext<PaymentDbContext>(options =>
+    options.UseInMemoryDatabase("PaymentTestDB"));
+
 // Register application services with Dependency Injection
 builder.Services.AddScoped<ICardPaymentService, CardPaymentService>();
-builder.Services.AddSingleton<ICardPaymentRepository, CardPaymentRepository>();
+builder.Services.AddScoped<ICardPaymentRepository, CardPaymentRepository>();
 
 // Configure logging
 builder.Logging.ClearProviders();
@@ -99,11 +106,11 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI(options =>
-    {
-        options.SwaggerEndpoint("/swagger/v1/swagger.json", "Payment API v1");
-       // options.RoutePrefix = string.Empty; // Serve Swagger UI at the app's root
-    });
+    // app.UseSwaggerUI(options =>
+    // {
+    //     //options.SwaggerEndpoint("/swagger/v1/swagger.json", "Payment API v1");
+    //    options.RoutePrefix = string.Empty; // Serve Swagger UI at the app's root
+    // });
 }
 
 app.UseHttpsRedirection();
@@ -111,7 +118,7 @@ app.UseHttpsRedirection();
 app.UseCors("AllowAll");
 
 // Use custom authentication middleware 
-app.UseAuthTokenMiddleware();
+// app.UseAuthTokenMiddleware();
 
 app.UseAuthorization();
 

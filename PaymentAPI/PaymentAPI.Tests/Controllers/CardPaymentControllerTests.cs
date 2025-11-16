@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using PaymentAPI.Controllers;
 using PaymentAPI.Models.DTOs;
+using PaymentAPI.Models.Entities;
 using PaymentAPI.Services.Interfaces;
 using Xunit;
 
@@ -41,7 +42,7 @@ public class CardPaymentControllerTests
         var expectedResponse = new CardPaymentResponseDto
         {
             IsValid = true,
-            CardType = "Visa",
+            CardType = CardType.Visa,
             MaskedCardNumber = "************0366",
             Message = "Card number is valid",
             ValidatedAt = DateTime.UtcNow
@@ -56,7 +57,7 @@ public class CardPaymentControllerTests
         // Assert
         result.Should().BeOfType<OkObjectResult>();
         var okResult = result as OkObjectResult;
-        okResult.Value.Should().BeEquivalentTo(expectedResponse);
+        okResult!.Value.Should().BeEquivalentTo(expectedResponse);
 
         _mockService.Verify(s => s.ValidateCardAsync(request, It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -73,7 +74,7 @@ public class CardPaymentControllerTests
         var expectedResponse = new CardPaymentResponseDto
         {
             IsValid = false,
-            CardType = "Unknown",
+            CardType = CardType.Unknown,
             MaskedCardNumber = "************3456",
             Message = "Card number is invalid",
             ValidatedAt = DateTime.UtcNow
@@ -88,8 +89,8 @@ public class CardPaymentControllerTests
         // Assert
         result.Should().BeOfType<OkObjectResult>();
         var okResult = result as OkObjectResult;
-        var response = okResult.Value as CardPaymentResponseDto;
-        response.IsValid.Should().BeFalse();
+        var response = okResult!.Value as CardPaymentResponseDto;
+        response!.IsValid.Should().BeFalse();
     }
 
     [Fact]
@@ -130,10 +131,10 @@ public class CardPaymentControllerTests
         // Assert
         result.Should().BeOfType<BadRequestObjectResult>();
         var badRequestResult = result as BadRequestObjectResult;
-        badRequestResult.Value.Should().BeOfType<ProblemDetails>();
+        badRequestResult!.Value.Should().BeOfType<ProblemDetails>();
         
         var problemDetails = badRequestResult.Value as ProblemDetails;
-        problemDetails.Status.Should().Be(StatusCodes.Status400BadRequest);
+        problemDetails!.Status.Should().Be(StatusCodes.Status400BadRequest);
     }
 
     [Fact]
@@ -154,11 +155,11 @@ public class CardPaymentControllerTests
         // Assert
         result.Should().BeOfType<ObjectResult>();
         var objectResult = result as ObjectResult;
-        objectResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
+        objectResult!.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
         
         var problemDetails = objectResult.Value as ProblemDetails;
         problemDetails.Should().NotBeNull();
-        problemDetails.Status.Should().Be(StatusCodes.Status500InternalServerError);
+        problemDetails!.Status.Should().Be(StatusCodes.Status500InternalServerError);
     }
 
     [Fact]
@@ -176,7 +177,7 @@ public class CardPaymentControllerTests
         var expectedResponse = new CardPaymentResponseDto
         {
             IsValid = true,
-            CardType = "Visa",
+            CardType = CardType.Visa,
             MaskedCardNumber = "************0366",
             Message = "Card number is valid",
             ValidatedAt = DateTime.UtcNow
@@ -202,7 +203,7 @@ public class CardPaymentControllerTests
         // Assert
         result.Should().BeOfType<OkObjectResult>();
         var okResult = result as OkObjectResult;
-        okResult.Value.Should().NotBeNull();
+        okResult!.Value.Should().NotBeNull();
     }
 
     [Theory]

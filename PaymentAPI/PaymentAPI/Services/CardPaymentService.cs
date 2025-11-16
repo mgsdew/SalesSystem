@@ -122,11 +122,11 @@ public class CardPaymentService : ICardPaymentService
     }
 
     /// <inheritdoc/>
-    public string DetermineCardType(string cardNumber)
+    public CardType DetermineCardType(string cardNumber)
     {
         if (string.IsNullOrWhiteSpace(cardNumber))
         {
-            return "Unknown";
+            return CardType.Unknown;
         }
 
         cardNumber = cardNumber.Replace(" ", "").Replace("-", "");
@@ -134,7 +134,7 @@ public class CardPaymentService : ICardPaymentService
         // Visa: starts with 4
         if (cardNumber.StartsWith("4"))
         {
-            return "Visa";
+            return CardType.Visa;
         }
 
         // MasterCard: starts with 51-55 or 2221-2720
@@ -145,7 +145,7 @@ public class CardPaymentService : ICardPaymentService
             {
                 if (firstTwoDigits >= 51 && firstTwoDigits <= 55)
                 {
-                    return "MasterCard";
+                    return CardType.MasterCard;
                 }
             }
 
@@ -156,7 +156,7 @@ public class CardPaymentService : ICardPaymentService
                 {
                     if (firstFourDigits >= 2221 && firstFourDigits <= 2720)
                     {
-                        return "MasterCard";
+                        return CardType.MasterCard;
                     }
                 }
             }
@@ -165,13 +165,13 @@ public class CardPaymentService : ICardPaymentService
         // American Express: starts with 34 or 37
         if (cardNumber.StartsWith("34") || cardNumber.StartsWith("37"))
         {
-            return "American Express";
+            return CardType.AmericanExpress;
         }
 
         // Discover: starts with 6011, 622126-622925, 644-649, or 65
         if (cardNumber.StartsWith("6011") || cardNumber.StartsWith("65"))
         {
-            return "Discover";
+            return CardType.Discover;
         }
 
         if (cardNumber.Length >= 6)
@@ -181,7 +181,7 @@ public class CardPaymentService : ICardPaymentService
             {
                 if (firstSixDigits >= 622126 && firstSixDigits <= 622925)
                 {
-                    return "Discover";
+                    return CardType.Discover;
                 }
             }
         }
@@ -193,12 +193,44 @@ public class CardPaymentService : ICardPaymentService
             {
                 if (firstThreeDigits >= 644 && firstThreeDigits <= 649)
                 {
-                    return "Discover";
+                    return CardType.Discover;
                 }
             }
         }
 
-        return "Unknown";
+        return CardType.Unknown;
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> DeleteByCardNumberAsync(string cardNumber, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(cardNumber))
+        {
+            throw new ArgumentException("Card number cannot be null or empty", nameof(cardNumber));
+        }
+
+        try
+        {
+            _logger.LogInformation("Deleting card payment records for card number: {CardNumber}", cardNumber);
+
+            var result = await _repository.DeleteByCardNumberAsync(cardNumber, cancellationToken);
+
+            if (result)
+            {
+                _logger.LogInformation("Successfully deleted card payment records for card number: {CardNumber}", cardNumber);
+            }
+            else
+            {
+                _logger.LogWarning("No card payment records found to delete for card number: {CardNumber}", cardNumber);
+            }
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while deleting card payment records for card number: {CardNumber}", cardNumber);
+            throw;
+        }
     }
 
     /// <summary>

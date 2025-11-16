@@ -1,4 +1,5 @@
 using PaymentAPI.Models.DTOs;
+using PaymentAPI.Models.Entities;
 
 namespace PaymentAPI.Services.Interfaces;
 
@@ -27,5 +28,13 @@ public interface ICardPaymentService
     /// </summary>
     /// <param name="cardNumber">The card number to analyze.</param>
     /// <returns>The card type (Visa, MasterCard, Amex, Discover, etc.) or Unknown if not recognized.</returns>
-    string DetermineCardType(string cardNumber);
+    CardType DetermineCardType(string cardNumber);
+
+    /// <summary>
+    /// Deletes card payment records by card number asynchronously.
+    /// </summary>
+    /// <param name="cardNumber">The card number to delete records for.</param>
+    /// <param name="cancellationToken">Cancellation token for async operation.</param>
+    /// <returns>A task that represents the asynchronous operation. The task result indicates whether any records were deleted.</returns>
+    Task<bool> DeleteByCardNumberAsync(string cardNumber, CancellationToken cancellationToken = default);
 }

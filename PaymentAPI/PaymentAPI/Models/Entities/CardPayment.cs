@@ -28,5 +28,5 @@ public class CardPayment
     /// <summary>
     /// Gets or sets the card type (Visa, MasterCard, Amex, etc.).
     /// </summary>
-    public string? CardType { get; set; }
+    public CardType CardType { get; set; }
 }

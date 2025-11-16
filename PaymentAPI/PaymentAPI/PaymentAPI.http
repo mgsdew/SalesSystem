@@ -1,6 +1,17 @@
 @PaymentAPI_HostAddress = http://localhost:5159
 
-GET {{PaymentAPI_HostAddress}}/weatherforecast/
+### Health Check
+GET {{PaymentAPI_HostAddress}}/health
 Accept: application/json
 
-###
+### Validate Card
+POST {{PaymentAPI_HostAddress}}/api/cardpayment/validate
+Content-Type: application/json
+
+{
+  "cardNumber": "4532015112830366"
+}
+
+### Delete by Card Number
+DELETE {{PaymentAPI_HostAddress}}/api/cardpayment/delete/4532015112830366
+Accept: application/json

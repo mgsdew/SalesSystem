@@ -1,20 +1,34 @@
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
+using PaymentAPI.Data;
 using PaymentAPI.Models.Entities;
 using PaymentAPI.Repositories;
 using Xunit;
 
 namespace PaymentAPI.Tests.Repositories;
-public class CardPaymentRepositoryTests
+
+public class CardPaymentRepositoryTests : IDisposable
 {
+    private readonly PaymentDbContext _context;
     private readonly Mock<ILogger<CardPaymentRepository>> _mockLogger;
     private readonly CardPaymentRepository _repository;
 
     public CardPaymentRepositoryTests()
     {
+        var options = new DbContextOptionsBuilder<PaymentDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
+
+        _context = new PaymentDbContext(options);
         _mockLogger = new Mock<ILogger<CardPaymentRepository>>();
-        _repository = new CardPaymentRepository(_mockLogger.Object);
+        _repository = new CardPaymentRepository(_context, _mockLogger.Object);
+    }
+
+    public void Dispose()
+    {
+        _context.Dispose();
     }
 
     [Fact]
@@ -26,7 +40,7 @@ public class CardPaymentRepositoryTests
             Id = Guid.NewGuid(),
             CardNumber = "4532015112830366",
             IsValid = true,
-            CardType = "Visa",
+            CardType = CardType.Visa,
             ValidatedAt = DateTime.UtcNow
         };
 
@@ -44,8 +58,10 @@ public class CardPaymentRepositoryTests
     [Fact]
     public async Task SaveAsync_Should_ThrowArgumentNullException_WhenCardPaymentIsNull()
     {
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentNullException>(() => _repository.SaveAsync(null));
+#pragma warning restore CS8625
     }
 
     [Fact]
@@ -57,7 +73,7 @@ public class CardPaymentRepositoryTests
             Id = Guid.NewGuid(),
             CardNumber = "4532015112830366",
             IsValid = true,
-            CardType = "Visa",
+            CardType = CardType.Visa,
             ValidatedAt = DateTime.UtcNow
         };
 
@@ -94,7 +110,7 @@ public class CardPaymentRepositoryTests
             Id = Guid.NewGuid(),
             CardNumber = "4532015112830366",
             IsValid = true,
-            CardType = "Visa",
+            CardType = CardType.Visa,
             ValidatedAt = DateTime.UtcNow
         };
 
@@ -103,7 +119,7 @@ public class CardPaymentRepositoryTests
             Id = Guid.NewGuid(),
             CardNumber = "5425233430109903",
             IsValid = true,
-            CardType = "MasterCard",
+            CardType = CardType.MasterCard,
             ValidatedAt = DateTime.UtcNow.AddMinutes(-1)
         };
 
@@ -130,7 +146,7 @@ public class CardPaymentRepositoryTests
             Id = Guid.NewGuid(),
             CardNumber = "4532015112830366",
             IsValid = true,
-            CardType = "Visa",
+            CardType = CardType.Visa,
             ValidatedAt = DateTime.UtcNow
         };
 
@@ -169,7 +185,7 @@ public class CardPaymentRepositoryTests
             Id = Guid.NewGuid(),
             CardNumber = "4532015112830366",
             IsValid = true,
-            CardType = "Visa",
+            CardType = CardType.Visa,
             ValidatedAt = DateTime.UtcNow
         };
 
@@ -177,7 +193,7 @@ public class CardPaymentRepositoryTests
 
         // Update the card payment
         cardPayment.IsValid = false;
-        cardPayment.CardType = "Unknown";
+        cardPayment.CardType = CardType.Unknown;
 
         // Act
         var result = await _repository.SaveAsync(cardPayment);
@@ -185,12 +201,12 @@ public class CardPaymentRepositoryTests
         // Assert
         result.Should().NotBeNull();
         result.IsValid.Should().BeFalse();
-        result.CardType.Should().Be("Unknown");
+        result.CardType.Should().Be(CardType.Unknown);
 
         // Verify the update
         var updatedCardPayment = await _repository.GetByIdAsync(cardPayment.Id);
         updatedCardPayment.IsValid.Should().BeFalse();
-        updatedCardPayment.CardType.Should().Be("Unknown");
+        updatedCardPayment.CardType.Should().Be(CardType.Unknown);
     }
 
     [Fact]
@@ -207,7 +223,7 @@ public class CardPaymentRepositoryTests
                 Id = Guid.NewGuid(),
                 CardNumber = $"453201511283036{i}",
                 IsValid = true,
-                CardType = "Visa",
+                CardType = CardType.Visa,
                 ValidatedAt = DateTime.UtcNow
             };
             cardPayments.Add(cardPayment);
@@ -223,7 +239,9 @@ public class CardPaymentRepositoryTests
 
         // Assert
         var allCardPayments = await _repository.GetAllAsync();
+#pragma warning disable CS8602 // Dereference of a possibly null reference
         allCardPayments.Should().HaveCountGreaterThanOrEqualTo(10);
+#pragma warning restore CS8602
 
         foreach (var cardPayment in cardPayments)
         {
@@ -241,7 +259,7 @@ public class CardPaymentRepositoryTests
             Id = Guid.NewGuid(),
             CardNumber = "4532015112830366",
             IsValid = true,
-            CardType = "Visa",
+            CardType = CardType.Visa,
             ValidatedAt = DateTime.UtcNow.AddHours(-2)
         };
 
@@ -250,7 +268,7 @@ public class CardPaymentRepositoryTests
             Id = Guid.NewGuid(),
             CardNumber = "5425233430109903",
             IsValid = true,
-            CardType = "MasterCard",
+            CardType = CardType.MasterCard,
             ValidatedAt = DateTime.UtcNow
         };
 
