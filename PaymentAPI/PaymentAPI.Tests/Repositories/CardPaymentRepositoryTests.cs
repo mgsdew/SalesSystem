@@ -37,7 +37,7 @@ public class CardPaymentRepositoryTests : IDisposable
         // Arrange
         var cardPayment = new CardPayment
         {
-            Id = Guid.NewGuid(),
+            Id = Guid.NewGuid().ToString(),
             CardNumber = "4532015112830366",
             IsValid = true,
             CardType = CardType.Visa,
@@ -70,7 +70,7 @@ public class CardPaymentRepositoryTests : IDisposable
         // Arrange
         var cardPayment = new CardPayment
         {
-            Id = Guid.NewGuid(),
+            Id = Guid.NewGuid().ToString(),
             CardNumber = "4532015112830366",
             IsValid = true,
             CardType = CardType.Visa,
@@ -92,7 +92,7 @@ public class CardPaymentRepositoryTests : IDisposable
     public async Task GetByIdAsync_Should_ReturnNull_WhenCardPaymentDoesNotExist()
     {
         // Arrange
-        var nonExistentId = Guid.NewGuid();
+        var nonExistentId = Guid.NewGuid().ToString();
 
         // Act
         var result = await _repository.GetByIdAsync(nonExistentId);
@@ -107,7 +107,7 @@ public class CardPaymentRepositoryTests : IDisposable
         // Arrange
         var cardPayment1 = new CardPayment
         {
-            Id = Guid.NewGuid(),
+            Id = Guid.NewGuid().ToString(),
             CardNumber = "4532015112830366",
             IsValid = true,
             CardType = CardType.Visa,
@@ -116,7 +116,7 @@ public class CardPaymentRepositoryTests : IDisposable
 
         var cardPayment2 = new CardPayment
         {
-            Id = Guid.NewGuid(),
+            Id = Guid.NewGuid().ToString(),
             CardNumber = "5425233430109903",
             IsValid = true,
             CardType = CardType.MasterCard,
@@ -143,7 +143,7 @@ public class CardPaymentRepositoryTests : IDisposable
         // Arrange
         var cardPayment = new CardPayment
         {
-            Id = Guid.NewGuid(),
+            Id = Guid.NewGuid().ToString(),
             CardNumber = "4532015112830366",
             IsValid = true,
             CardType = CardType.Visa,
@@ -167,7 +167,7 @@ public class CardPaymentRepositoryTests : IDisposable
     public async Task DeleteAsync_Should_ReturnFalse_WhenCardPaymentDoesNotExist()
     {
         // Arrange
-        var nonExistentId = Guid.NewGuid();
+        var nonExistentId = Guid.NewGuid().ToString();
 
         // Act
         var result = await _repository.DeleteAsync(nonExistentId);
@@ -182,7 +182,7 @@ public class CardPaymentRepositoryTests : IDisposable
         // Arrange
         var cardPayment = new CardPayment
         {
-            Id = Guid.NewGuid(),
+            Id = Guid.NewGuid().ToString(),
             CardNumber = "4532015112830366",
             IsValid = true,
             CardType = CardType.Visa,
@@ -220,7 +220,7 @@ public class CardPaymentRepositoryTests : IDisposable
         {
             var cardPayment = new CardPayment
             {
-                Id = Guid.NewGuid(),
+                Id = Guid.NewGuid().ToString(),
                 CardNumber = $"453201511283036{i}",
                 IsValid = true,
                 CardType = CardType.Visa,
@@ -256,7 +256,7 @@ public class CardPaymentRepositoryTests : IDisposable
         // Arrange
         var oldCardPayment = new CardPayment
         {
-            Id = Guid.NewGuid(),
+            Id = Guid.NewGuid().ToString(),
             CardNumber = "4532015112830366",
             IsValid = true,
             CardType = CardType.Visa,
@@ -265,7 +265,7 @@ public class CardPaymentRepositoryTests : IDisposable
 
         var newCardPayment = new CardPayment
         {
-            Id = Guid.NewGuid(),
+            Id = Guid.NewGuid().ToString(),
             CardNumber = "5425233430109903",
             IsValid = true,
             CardType = CardType.MasterCard,

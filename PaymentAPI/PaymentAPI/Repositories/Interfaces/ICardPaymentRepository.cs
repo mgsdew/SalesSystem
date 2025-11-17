@@ -21,7 +21,7 @@ public interface ICardPaymentRepository
     /// <param name="id">The unique identifier of the card payment record.</param>
     /// <param name="cancellationToken">Cancellation token for async operation.</param>
     /// <returns>A task that represents the asynchronous operation. The task result contains the card payment entity if found; otherwise, null.</returns>
-    Task<CardPayment?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<CardPayment?> GetByIdAsync(string id, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Retrieves all card payment validation records asynchronously.
@@ -36,7 +36,7 @@ public interface ICardPaymentRepository
     /// <param name="id">The unique identifier of the card payment record to delete.</param>
     /// <param name="cancellationToken">Cancellation token for async operation.</param>
     /// <returns>A task that represents the asynchronous operation. The task result indicates whether the deletion was successful.</returns>
-    Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<bool> DeleteAsync(string id, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Deletes card payment validation records by card number asynchronously.

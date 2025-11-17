@@ -10,7 +10,8 @@
 
 ### Prerequisites
 - .NET 8.0 SDK
-- Access to parent `.env` file with `AUTH_VALID_TOKENS`
+- SQL Server (or use the provided Docker setup)
+- Access to parent `.env` file with authentication tokens
 
 ### Running the API
 
@@ -166,18 +167,18 @@ curl -X POST "http://localhost:5160/api/User/johndoe/assign-role" \
 
 ## 🏗 Architecture
 
-### Clean Architecture Pattern
+### Clean Architecture Pattern with Database Persistence
 
 ```
 UserAPI/
 ├── Controllers/          # HTTP API endpoints
 ├── Services/            # Business logic layer
 │   └── Interfaces/      # Service contracts
-├── Repositories/        # Data access layer
+├── Repositories/        # Data access layer (EF Core)
 │   └── Interfaces/      # Repository contracts
 ├── Models/              # Domain models
 │   ├── DTOs/           # Data transfer objects
-│   └── Entities/       # Domain entities
+│   └── Entities/       # Domain entities (EF Core)
 ├── Middleware/          # Custom middleware
 └── Properties/          # Launch settings
 ```
@@ -186,10 +187,17 @@ UserAPI/
 
 - **UserController**: RESTful API endpoints
 - **UserService**: Business logic and validation
-- **UserRepository**: Data access (in-memory implementation)
+- **UserRepository**: Data access (EF Core with SQL Server)
 - **AuthTokenMiddleware**: Token-based authentication
 - **User Entity**: Core user domain model with GUID IDs
 - **DTOs**: Request/response data transfer objects
+
+### Database Integration
+
+- **ORM:** Entity Framework Core 8.0
+- **Database:** SQL Server with configurable connection
+- **Migrations:** Code-first approach with automatic migrations
+- **Tables:** Users with proper indexing and constraints
 
 ## 🧪 Testing
 
@@ -232,11 +240,11 @@ docker run -p 5160:80 userapi
 ```
 
 ### Production Considerations
-- Replace in-memory repository with database (SQL Server/PostgreSQL)
 - Implement proper password hashing (BCrypt/Argon2)
 - Add rate limiting and request validation
 - Configure proper logging and monitoring
 - Set up health checks and metrics
+- Enable service discovery registration with Consul
 
 ## 📊 Sample Data
 

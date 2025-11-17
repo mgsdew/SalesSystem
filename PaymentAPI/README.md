@@ -26,6 +26,8 @@ The **Payment Card Validation API** is a microservice that validates credit card
 - ✅ **Card Masking** - PCI-DSS compliant data protection (shows only last 4 digits)
 - ✅ **RESTful Design** - Standard HTTP methods and status codes
 - ✅ **CRUD Operations** - Create, Read, Delete operations for card validation records
+- ✅ **Inter-Service Communication** - HTTP client integration with UserAPI
+- ✅ **Event Publishing** - RabbitMQ integration for asynchronous events
 - ✅ **Comprehensive Tests** - 56 unit tests with 95%+ coverage
 - ✅ **Swagger/OpenAPI** - Interactive API documentation
 
@@ -213,6 +215,33 @@ The API uses Entity Framework Core for database operations:
 - **CardType:** Enum-based (Visa, MasterCard, Amex, Discover)
 - **Connection:** Configurable via appsettings.json
 
+## 🔗 Inter-Service Communication
+
+The PaymentAPI integrates with other microservices through multiple communication patterns:
+
+### HTTP Client Integration
+- **Typed HTTP Client** for synchronous communication with UserAPI
+- **User Validation** during payment processing
+- **Dependency Injection** for loose coupling and testability
+
+### Message Queue Integration
+- **RabbitMQ Publisher** for asynchronous event publishing
+- **Topic Exchange** for event-driven architecture
+- **Payment Validation Events** published to `salessystem.events` exchange
+
+### Service Architecture
+```
+PaymentAPI
+├── Controllers/               # REST endpoints
+├── Services/                  # Business logic + communication
+│   ├── CardPaymentService.cs  # Core payment logic
+│   ├── UserApiClient.cs       # HTTP client for UserAPI
+│   ├── MessagePublisher.cs    # RabbitMQ event publisher
+│   └── Interfaces/            # Communication contracts
+├── Repositories/              # Data access (EF Core)
+└── Models/                    # DTOs and Entities
+```
+
 ## 🧪 Running Unit Tests
 
 ```bash
@@ -236,9 +265,13 @@ PaymentAPI/
 ├── PaymentAPI/                    # Main API Project
 │   ├── Controllers/               # REST endpoints
 │   │   └── CardPaymentController.cs
-│   ├── Services/                  # Business logic (Luhn algorithm)
-│   │   ├── CardPaymentService.cs
-│   │   └── Interfaces/
+│   ├── Services/                  # Business logic + communication
+│   │   ├── CardPaymentService.cs  # Core payment logic
+│   │   ├── UserApiClient.cs       # HTTP client for UserAPI
+│   │   ├── MessagePublisher.cs    # RabbitMQ event publisher
+│   │   └── Interfaces/            # Communication contracts
+│   │       ├── IUserApiClient.cs
+│   │       └── IMessagePublisher.cs
 │   ├── Repositories/              # Data access (EF Core)
 │   │   ├── CardPaymentRepository.cs
 │   │   └── Interfaces/

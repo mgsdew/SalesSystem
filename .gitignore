@@ -296,15 +296,6 @@ FodyWeavers.xsd
 *.sln.iml
 
 # ========================================
-# Environment Variables (Sensitive Data)
+# Environment Variables
 # ========================================
-# ⚠️ IMPORTANT FOR PRODUCTION:
-# The .env file contains authentication tokens and sensitive credentials.
-# This line is COMMENTED OUT for demo/portfolio purposes ONLY to allow
-# recruiters and code reviewers to test the authentication system.
-#
-# ⚠️ IN PRODUCTION ENVIRONMENTS:
-# UNCOMMENT the line below to prevent committing sensitive data to version control!
-# Use secure secret management systems (Azure Key Vault, AWS Secrets Manager, etc.)
-# ========================================
-# .env
+.env

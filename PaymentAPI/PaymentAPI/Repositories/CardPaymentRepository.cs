@@ -57,7 +57,7 @@ public class CardPaymentRepository : ICardPaymentRepository
     }
 
     /// <inheritdoc/>
-    public async Task<CardPayment?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<CardPayment?> GetByIdAsync(string id, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -106,7 +106,7 @@ public class CardPaymentRepository : ICardPaymentRepository
     }
 
     /// <inheritdoc/>
-    public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<bool> DeleteAsync(string id, CancellationToken cancellationToken = default)
     {
         try
         {

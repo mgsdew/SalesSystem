@@ -3,6 +3,8 @@ using UserAPI.Services.Interfaces;
 using UserAPI.Repositories;
 using UserAPI.Repositories.Interfaces;
 using UserAPI.Middleware;
+using UserAPI.Data;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using System.Reflection;
 using DotNetEnv;
@@ -19,9 +21,26 @@ if (File.Exists(envPath))
 // Add services to the container
 builder.Services.AddControllers();
 
+// Add DbContext
+builder.Services.AddDbContext<UserDbContext>(options =>
+{
+    var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING")
+        ?? builder.Configuration.GetConnectionString("DefaultConnection");
+
+    if (!string.IsNullOrEmpty(connectionString))
+    {
+        options.UseSqlServer(connectionString);
+    }
+    else
+    {
+        // Fallback to in-memory database for development/testing
+        options.UseInMemoryDatabase("UserTestDB");
+    }
+});
+
 // Register application services with Dependency Injection
 builder.Services.AddScoped<IUserService, UserService>();
-builder.Services.AddSingleton<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
 
 // Configure logging
 builder.Logging.ClearProviders();

@@ -12,16 +12,26 @@ public class CardPaymentService : ICardPaymentService
 {
     private readonly ICardPaymentRepository _repository;
     private readonly ILogger<CardPaymentService> _logger;
+    private readonly IUserApiClient _userApiClient;
+    private readonly IMessagePublisher _messagePublisher;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="CardPaymentService"/> class.
     /// </summary>
     /// <param name="repository">The card payment repository.</param>
     /// <param name="logger">The logger instance.</param>
-    public CardPaymentService(ICardPaymentRepository repository, ILogger<CardPaymentService> logger)
+    /// <param name="userApiClient">Client for UserAPI communication.</param>
+    /// <param name="messagePublisher">Publisher for message events.</param>
+    public CardPaymentService(
+        ICardPaymentRepository repository,
+        ILogger<CardPaymentService> logger,
+        IUserApiClient userApiClient,
+        IMessagePublisher messagePublisher)
     {
         _repository = repository ?? throw new ArgumentNullException(nameof(repository));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _userApiClient = userApiClient ?? throw new ArgumentNullException(nameof(userApiClient));
+        _messagePublisher = messagePublisher ?? throw new ArgumentNullException(nameof(messagePublisher));
     }
 
     /// <inheritdoc/>
@@ -49,17 +59,47 @@ public class CardPaymentService : ICardPaymentService
                 ValidatedAt = DateTime.UtcNow
             };
 
-            // Save the validation result to repository (production-grade structure)
-            var cardPaymentEntity = new CardPayment
+            // Only save valid card validation results to repository
+            if (isValid)
             {
-                Id = Guid.NewGuid(),
-                CardNumber = request.CardNumber, // In production, this should be encrypted
-                IsValid = isValid,
-                CardType = cardType,
-                ValidatedAt = response.ValidatedAt
-            };
+                var cardPaymentEntity = new CardPayment
+                {
+                    Id = Guid.NewGuid().ToString(), // Convert Guid to string for database compatibility
+                    CardNumber = request.CardNumber, // In production, this should be encrypted
+                    IsValid = isValid,
+                    CardType = cardType,
+                    ValidatedAt = response.ValidatedAt
+                };
 
-            await _repository.SaveAsync(cardPaymentEntity, cancellationToken);
+                await _repository.SaveAsync(cardPaymentEntity, cancellationToken);
+                _logger.LogInformation("Valid card validation saved to database. CardType: {CardType}", cardType);
+
+                // Publish event for other services to consume
+                var paymentEvent = new PaymentValidatedEvent
+                {
+                    CardId = cardPaymentEntity.Id,
+                    CardNumber = maskedCardNumber,
+                    IsValid = true,
+                    ValidatedAt = response.ValidatedAt,
+                    UserId = request.UserId ?? string.Empty // Assuming UserId is added to request
+                };
+                _messagePublisher.PublishPaymentValidated(paymentEvent);
+            }
+            else
+            {
+                _logger.LogInformation("Invalid card validation - not saved to database. CardType: {CardType}", cardType);
+            }
+
+            // Example: Validate user exists (if UserId provided)
+            if (!string.IsNullOrEmpty(request.UserId))
+            {
+                var userExists = await _userApiClient.ValidateUserAsync(request.UserId);
+                if (!userExists)
+                {
+                    response.Message = "Card is valid but user not found";
+                    response.IsValid = false;
+                }
+            }
 
             _logger.LogInformation("Card validation completed. IsValid: {IsValid}, CardType: {CardType}", isValid, cardType);
 

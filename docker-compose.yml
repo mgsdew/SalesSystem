@@ -47,6 +47,46 @@ services:
       timeout: 3s
       retries: 5
 
+  # RabbitMQ for inter-service messaging (FREE)
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: salessystem-rabbitmq
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    ports:
+      - "5672:5672"   # AMQP port
+      - "15672:15672" # Management UI
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - salessystem-network
+    restart: unless-stopped
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Consul for service discovery (FREE)
+  consul:
+    image: consul:1.15
+    container_name: salessystem-consul
+    ports:
+      - "8500:8500"   # HTTP API
+      - "8600:8600"   # DNS
+    command: agent -server -bootstrap -ui -client=0.0.0.0 -log-level=info
+    volumes:
+      - consul-data:/consul/data
+    networks:
+      - salessystem-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8500/v1/status/leader"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   # ============================================
   # Microservices
   # ============================================
@@ -167,3 +207,7 @@ volumes:
     name: salessystem-sqlserver-data
   redis-data:
     name: salessystem-redis-data
+  rabbitmq-data:
+    name: salessystem-rabbitmq-data
+  consul-data:
+    name: salessystem-consul-data

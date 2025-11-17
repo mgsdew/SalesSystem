@@ -12,11 +12,52 @@ using Microsoft.EntityFrameworkCore.InMemory;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Load environment variables from parent .env file if it exists
-var envPath = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", ".env");
-if (File.Exists(envPath))
+// Load environment variables from .env file
+// Robust path resolution for different execution contexts (VS, CLI, Docker)
+string GetEnvFilePath()
 {
-    Env.Load(envPath);
+    // Get the directory where the application is running from
+    var appDirectory = AppContext.BaseDirectory;
+
+    // Navigate up to find the solution root
+    // From: PaymentAPI/PaymentAPI/bin/Debug/net8.0/
+    // To:   SalesSystem/
+    var solutionRoot = Path.GetFullPath(Path.Combine(appDirectory, "..", "..", "..", ".."));
+
+    // Check if we're in the solution root
+    if (Directory.Exists(solutionRoot) && File.Exists(Path.Combine(solutionRoot, "SalesSystem.sln")))
+    {
+        return Path.Combine(solutionRoot, ".env");
+    }
+
+    // Fallback: check relative to current directory (for CLI runs)
+    var currentDirEnv = Path.Combine(Directory.GetCurrentDirectory(), ".env");
+    if (File.Exists(currentDirEnv))
+    {
+        return currentDirEnv;
+    }
+
+    // Fallback: check parent directory
+    var parentDirEnv = Path.Combine(Directory.GetCurrentDirectory(), "..", ".env");
+    if (File.Exists(parentDirEnv))
+    {
+        return parentDirEnv;
+    }
+
+    // Fallback: check grandparent directory (original logic)
+    var grandparentDirEnv = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", ".env");
+    if (File.Exists(grandparentDirEnv))
+    {
+        return grandparentDirEnv;
+    }
+
+    return null; // No .env file found
+}
+
+var envFilePath = GetEnvFilePath();
+if (!string.IsNullOrEmpty(envFilePath))
+{
+    Env.Load(envFilePath);
 }
 
 // Add services to the container
@@ -24,11 +65,34 @@ builder.Services.AddControllers();
 
 // Add DbContext
 builder.Services.AddDbContext<PaymentDbContext>(options =>
-    options.UseInMemoryDatabase("PaymentTestDB"));
+{
+    var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING")
+        ?? builder.Configuration.GetConnectionString("DefaultConnection");
+
+    if (!string.IsNullOrEmpty(connectionString))
+    {
+        options.UseSqlServer(connectionString);
+    }
+    else
+    {
+        // Fallback to in-memory database for development/testing
+        options.UseInMemoryDatabase("PaymentTestDB");
+    }
+});
 
 // Register application services with Dependency Injection
 builder.Services.AddScoped<ICardPaymentService, CardPaymentService>();
 builder.Services.AddScoped<ICardPaymentRepository, CardPaymentRepository>();
+
+// Register inter-service communication
+builder.Services.AddHttpClient<IUserApiClient, UserApiClient>(client =>
+{
+    var userApiUrl = Environment.GetEnvironmentVariable("USERAPI_URL") ?? "http://localhost:5160";
+    client.BaseAddress = new Uri(userApiUrl);
+    client.DefaultRequestHeaders.Add("Authorization", "Bearer dev-token-123456");
+});
+
+builder.Services.AddSingleton<IMessagePublisher, MessagePublisher>();
 
 // Configure logging
 builder.Logging.ClearProviders();
@@ -47,7 +111,7 @@ builder.Services.AddSwaggerGen(options =>
         Contact = new OpenApiContact
         {
             Name = "Payment API Team",
-            Email = "support@payment-api.com"
+            Email = "mgsdew03@gmail.com"
         }
     });
 
@@ -106,11 +170,11 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    // app.UseSwaggerUI(options =>
-    // {
-    //     //options.SwaggerEndpoint("/swagger/v1/swagger.json", "Payment API v1");
-    //    options.RoutePrefix = string.Empty; // Serve Swagger UI at the app's root
-    // });
+    app.UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint("/swagger/v1/swagger.json", "Payment API v1");
+        //options.RoutePrefix = string.Empty; // Serve Swagger UI at the app's root
+    });
 }
 
 app.UseHttpsRedirection();

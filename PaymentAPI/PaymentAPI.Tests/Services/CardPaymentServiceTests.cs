@@ -5,6 +5,8 @@ using PaymentAPI.Models.DTOs;
 using PaymentAPI.Models.Entities;
 using PaymentAPI.Repositories.Interfaces;
 using PaymentAPI.Services;
+using PaymentAPI.Services.Interfaces;
+using System.Net.Http;
 using Xunit;
 
 namespace PaymentAPI.Tests.Services;
@@ -13,13 +15,21 @@ public class CardPaymentServiceTests
 {
     private readonly Mock<ICardPaymentRepository> _mockRepository;
     private readonly Mock<ILogger<CardPaymentService>> _mockLogger;
+    private readonly Mock<IUserApiClient> _mockUserApiClient;
+    private readonly Mock<IMessagePublisher> _mockMessagePublisher;
     private readonly CardPaymentService _service;
 
     public CardPaymentServiceTests()
     {
         _mockRepository = new Mock<ICardPaymentRepository>();
         _mockLogger = new Mock<ILogger<CardPaymentService>>();
-        _service = new CardPaymentService(_mockRepository.Object, _mockLogger.Object);
+        _mockUserApiClient = new Mock<IUserApiClient>();
+        _mockMessagePublisher = new Mock<IMessagePublisher>();
+        _service = new CardPaymentService(
+            _mockRepository.Object,
+            _mockLogger.Object,
+            _mockUserApiClient.Object,
+            _mockMessagePublisher.Object);
     }
 
     #region CreditCardValidator Tests
@@ -167,9 +177,6 @@ public class CardPaymentServiceTests
             CardNumber = "4532015112830367" // Invalid checksum
         };
 
-        _mockRepository.Setup(r => r.SaveAsync(It.IsAny<PaymentAPI.Models.Entities.CardPayment>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((PaymentAPI.Models.Entities.CardPayment cp, CancellationToken ct) => cp);
-
         // Act
         var result = await _service.ValidateCardAsync(request);
 
@@ -178,7 +185,8 @@ public class CardPaymentServiceTests
         result.IsValid.Should().BeFalse();
         result.Message.Should().Be("Card number is invalid");
 
-        _mockRepository.Verify(r => r.SaveAsync(It.IsAny<PaymentAPI.Models.Entities.CardPayment>(), It.IsAny<CancellationToken>()), Times.Once);
+        // Verify that SaveAsync was never called for invalid cards
+        _mockRepository.Verify(r => r.SaveAsync(It.IsAny<PaymentAPI.Models.Entities.CardPayment>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -213,7 +221,27 @@ public class CardPaymentServiceTests
         savedCardPayment.CardNumber.Should().Be(request.CardNumber);
         savedCardPayment.IsValid.Should().BeTrue();
         savedCardPayment.CardType.Should().Be(CardType.MasterCard);
-        savedCardPayment.Id.Should().NotBe(Guid.Empty);
+        savedCardPayment.Id.Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public async Task ValidateCardAsync_Should_NotSaveInvalidCardToRepository()
+    {
+        // Arrange
+        var request = new CardPaymentRequestDto
+        {
+            CardNumber = "4532015112830367" // Invalid card (last digit changed)
+        };
+
+        // Act
+        var result = await _service.ValidateCardAsync(request);
+
+        // Assert
+        result.IsValid.Should().BeFalse();
+        result.Message.Should().Be("Card number is invalid");
+
+        // Verify that SaveAsync was never called
+        _mockRepository.Verify(r => r.SaveAsync(It.IsAny<PaymentAPI.Models.Entities.CardPayment>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]

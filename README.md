@@ -70,17 +70,24 @@ This solution showcases the ability to design and implement **professional, ente
                  ┌───────────┴───────────┐
                  │                       │
         ┌────────▼─────────┐    ┌───────▼────────┐
-        │  Payment API     │    │  Future APIs   │
-        │  (Port: 5159)    │    │  - Order API   │
-        │                  │    │  - User API    │
-        │  - Card Payment  │    │  - Product API │
-        │  - Validation    │    │  - Invoice API │
+        │  Payment API     │    │  User API      │
+        │  (Port: 5159)    │    │  (Port: 5160)  │
+        │                  │    │                │
+        │  - Card Payment  │◄──►│  - User Mgmt   │
+        │  - Validation    │    │  - Auth        │
+        │  - Event Pub     │    │                │
         └──────────────────┘    └────────────────┘
-                 │
-        ┌────────▼─────────┐
-        │   Database       │
-        │   (SQL Server)   │
-        └──────────────────┘
+                 │                       │
+        ┌────────▼─────────┐    ┌────────▼─────────┐
+        │   RabbitMQ       │    │   Consul         │
+        │  Message Queue   │    │ Service Discovery│
+        │  (Port: 5672)    │    │  (Port: 8500)    │
+        └──────────────────┘    └──────────────────┘
+                 │                       │
+        ┌────────▼─────────┐    ┌────────▼─────────┐
+        │   Database       │    │   Database       │
+        │   (SQL Server)   │    │   (SQL Server)   │
+        └──────────────────┘    └──────────────────┘
 ```
 
 ### High-Level System Design
@@ -109,9 +116,22 @@ SalesSystem/                          # Solution Root
 │   ├── README.md                     # API-specific documentation
 │   └── PaymentAPI.sln                # Service solution file
 │
+├── UserAPI/                          # User Management Microservice
+│   ├── UserAPI/                      # API Project
+│   │   ├── Controllers/              # HTTP endpoints
+│   │   ├── Services/                 # Business logic
+│   │   ├── Repositories/             # Data access
+│   │   ├── Models/                   # Domain models
+│   │   ├── Middleware/               # Custom middleware
+│   │   ├── appsettings.json          # Service-specific config
+│   │   ├── appsettings.Development.json
+│   │   └── Program.cs                # Service entry point
+│   ├── UserAPI.Tests/                # Unit & Integration tests
+│   ├── README.md                     # API-specific documentation
+│   └── UserAPI.sln                   # Service solution file
+│
 └── [Future Microservices]
     ├── OrderAPI/                     # Order management service
-    ├── UserAPI/                      # User & authentication service
     ├── ProductAPI/                   # Product catalog service
     └── InvoiceAPI/                   # Invoice generation service
 ```
@@ -175,6 +195,9 @@ Each microservice follows a clean architecture pattern:
 - Multi-card type detection (Visa, MasterCard, Amex, Discover)
 - Token-based authentication
 - Card number masking for PCI compliance
+- Database persistence with EF Core
+- Event publishing to RabbitMQ
+- Inter-service communication with UserAPI
 - Comprehensive test coverage (95%+)
 
 **Port:** 5159  
@@ -193,6 +216,8 @@ Each microservice follows a clean architecture pattern:
 - User CRUD operations
 - Password hashing and verification
 - Email uniqueness validation
+- Database persistence with EF Core
+- Service discovery registration with Consul
 - Comprehensive test coverage
 
 **Port:** 5160  
@@ -243,8 +268,10 @@ Each microservice follows a clean architecture pattern:
 | Tool | Purpose |
 |------|---------|
 | **Docker** | Containerization |
-| **Docker Compose** | Multi-container orchestration |
-| **Kubernetes** | Container orchestration (production) |
+| **Docker Compose** | Multi-container orchestration (implemented) |
+| **RabbitMQ** | Message queuing for event-driven communication |
+| **Consul** | Service discovery and health checking |
+| **Kubernetes** | Container orchestration (production-ready design) |
 | **Azure DevOps / GitHub Actions** | CI/CD pipelines |
 
 ### Database
@@ -265,7 +292,15 @@ Each microservice follows a clean architecture pattern:
 | Tool | Purpose |
 |------|---------|
 | **Serilog** | Structured logging |
-| **Application Insights** | APM and monitoring ||
+| **Application Insights** | APM and monitoring |
+
+### Communication & Integration
+| Tool | Purpose |
+|------|---------|
+| **RabbitMQ** | Asynchronous message queuing |
+| **HttpClient** | Synchronous REST API communication |
+| **Consul** | Service discovery and health monitoring |
+| **OpenAPI/Swagger** | API documentation and testing |
 
 ### Security
 | Component | Implementation |
@@ -337,10 +372,12 @@ docker-compose down
 
 Once running, the services are available at:
 
-| Service | HTTP | Swagger UI |
-|---------|------|------------|
-| **PaymentAPI** | http://localhost:5159 | http://localhost:5159/swagger |
-| **UserAPI** | http://localhost:5160 | http://localhost:5160/swagger |
+| Service | HTTP | Swagger UI | Management UI |
+|---------|------|------------|---------------|
+| **PaymentAPI** | http://localhost:5159 | http://localhost:5159/swagger | - |
+| **UserAPI** | http://localhost:5160 | http://localhost:5160/swagger | - |
+| **RabbitMQ** | - | - | http://localhost:15672 |
+| **Consul** | http://localhost:8500 | - | http://localhost:8500/ui |
 
 ## 🔧 Environment Configuration
 
@@ -358,6 +395,20 @@ DB_HOST=localhost
 DB_PORT=1433
 DB_USER=sa
 DB_PASSWORD=YourStrong@Password
+
+# RabbitMQ (Message Queue)
+RABBITMQ_HOST=localhost
+RABBITMQ_PORT=5672
+RABBITMQ_USER=guest
+RABBITMQ_PASS=guest
+
+# Consul (Service Discovery)
+CONSUL_HOST=localhost
+CONSUL_PORT=8500
+
+# Service URLs
+USERAPI_URL=http://localhost:5160
+PAYMENTAPI_URL=http://localhost:5159
 
 # Redis (future)
 REDIS_HOST=localhost

@@ -1,15 +1,72 @@
+using UserAPI.Data;
+using UserAPI.Models.Entities;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Moq;
+
 namespace UserAPI.Tests.Repositories;
 
 /// <summary>
 /// Unit tests for UserRepository.
 /// </summary>
-public class UserRepositoryTests
+public class UserRepositoryTests : IDisposable
 {
+    private readonly UserDbContext _context;
     private readonly UserRepository _userRepository;
+    private readonly Mock<ILogger<UserRepository>> _mockLogger;
 
     public UserRepositoryTests()
     {
-        _userRepository = new UserRepository();
+        var options = new DbContextOptionsBuilder<UserDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
+
+        _context = new UserDbContext(options);
+        _mockLogger = new Mock<ILogger<UserRepository>>();
+        _userRepository = new UserRepository(_context, _mockLogger.Object);
+
+        // Seed test data
+        SeedTestData();
+    }
+
+    private void SeedTestData()
+    {
+        _context.Users.AddRange(new List<User>
+        {
+            new User
+            {
+                Id = Guid.NewGuid(),
+                Username = "admin",
+                Email = "admin@example.com",
+                FirstName = "System",
+                LastName = "Administrator",
+                PasswordHash = "cGFzc3dvcmQxMjNzYWx0",
+                Role = UserRole.Admin,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow.AddDays(-30),
+                UpdatedAt = DateTime.UtcNow.AddDays(-1)
+            },
+            new User
+            {
+                Id = Guid.NewGuid(),
+                Username = "johndoe",
+                Email = "user@example.com",
+                FirstName = "John",
+                LastName = "Doe",
+                PasswordHash = "cGFzc3dvcmQxMjNzYWx0",
+                Role = UserRole.User,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow.AddDays(-15),
+                UpdatedAt = DateTime.UtcNow.AddDays(-5)
+            }
+        });
+        _context.SaveChanges();
+    }
+
+    public void Dispose()
+    {
+        _context.Database.EnsureDeleted();
+        _context.Dispose();
     }
 
     [Fact]

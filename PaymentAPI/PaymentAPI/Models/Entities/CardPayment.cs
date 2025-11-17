@@ -8,7 +8,7 @@ public class CardPayment
     /// <summary>
     /// Gets or sets the unique identifier for the card payment.
     /// </summary>
-    public Guid Id { get; set; }
+    public string Id { get; set; } = string.Empty;
 
     /// <summary>
     /// Gets or sets the card number.
