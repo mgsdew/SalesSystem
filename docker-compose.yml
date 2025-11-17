@@ -102,26 +102,33 @@ services:
   #     - salessystem-network
   #   restart: unless-stopped
 
-  # # User API - Authentication & User Management Service
-  # userapi:
-  #   build:
-  #     context: ./UserAPI
-  #     dockerfile: Dockerfile
-  #   container_name: salessystem-userapi
-  #   environment:
-  #     - ASPNETCORE_ENVIRONMENT=Development
-  #     - ASPNETCORE_URLS=http://+:80
-  #     - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=UserDB;User Id=sa;Password=YourStrong@Password123;TrustServerCertificate=True;MultipleActiveResultSets=true
-  #   env_file:
-  #     - .env
-  #   ports:
-  #     - "5161:80"
-  #   depends_on:
-  #     sqlserver:
-  #       condition: service_healthy
-  #   networks:
-  #     - salessystem-network
-  #   restart: unless-stopped
+  # User API - Authentication & User Management Service
+  userapi:
+    build:
+      context: ./UserAPI
+      dockerfile: Dockerfile
+    container_name: salessystem-userapi
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=UserDB;User Id=sa;Password=YourStrong@Password123;TrustServerCertificate=True;MultipleActiveResultSets=true
+      - AUTH_VALID_TOKENS=${AUTH_VALID_TOKENS}
+    env_file:
+      - .env
+    ports:
+      - "5160:80"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    networks:
+      - salessystem-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   # # Product API - Product Catalog Service
   # productapi:

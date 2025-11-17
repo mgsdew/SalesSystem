@@ -1,0 +1,12 @@
+global using Xunit;
+global using Moq;
+global using FluentAssertions;
+global using UserAPI.Controllers;
+global using UserAPI.Services;
+global using UserAPI.Services.Interfaces;
+global using UserAPI.Repositories;
+global using UserAPI.Repositories.Interfaces;
+global using UserAPI.Models.DTOs;
+global using UserAPI.Models.Entities;
+global using Microsoft.AspNetCore.Mvc;
+global using Microsoft.Extensions.Logging;

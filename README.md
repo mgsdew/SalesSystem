@@ -184,14 +184,30 @@ Each microservice follows a clean architecture pattern:
 - `POST /api/CardPayment/validate` - Validate credit card
 - `GET /api/CardPayment/health` - Health check
 
-### Future Services (Planned)
+#### 2. UserAPI (Active)
+**Purpose:** User management and authentication
 
-#### 2. UserAPI (Planned)
-**Purpose:** User authentication and profile management
-- User registration and login
-- JWT token generation
-- Role-based access control (RBAC)
-- Profile management
+**Key Features:**
+- User registration and authentication
+- Role-based access control (User/Admin roles)
+- User CRUD operations
+- Password hashing and verification
+- Email uniqueness validation
+- Comprehensive test coverage
+
+**Port:** 5160  
+**Documentation:** [UserAPI/README.md](./UserAPI/README.md)
+
+**Endpoints:**
+- `GET /api/User` - Get all users
+- `POST /api/User` - Create user
+- `GET /api/User/{id}` - Get user by ID
+- `PUT /api/User/{id}` - Update user
+- `DELETE /api/User/{id}` - Delete user
+- `POST /api/User/authenticate` - Authenticate user
+- `GET /health` - Health check
+
+### Future Services (Planned)
 
 #### 3. OrderAPI (Planned)
 **Purpose:** Order management and processing
@@ -324,6 +340,7 @@ Once running, the services are available at:
 | Service | HTTP | Swagger UI |
 |---------|------|------------|
 | **PaymentAPI** | http://localhost:5159 | http://localhost:5159/swagger |
+| **UserAPI** | http://localhost:5160 | http://localhost:5160/swagger |
 
 ## 🔧 Environment Configuration
 
@@ -473,6 +490,7 @@ dotnet test /p:CollectCoverage=true /p:CoverageReporter=lcov
 ### Test Structure
 Each microservice has its own test project:
 - `PaymentAPI.Tests` - PaymentAPI tests
+- `UserAPI.Tests` - UserAPI tests
 - `OrderAPI.Tests` - OrderAPI tests (future)
 
 ### Test Coverage Goals
