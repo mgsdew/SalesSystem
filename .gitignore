@@ -295,7 +295,16 @@ FodyWeavers.xsd
 .idea/
 *.sln.iml
 
-# ========================================
-# Environment Variables
-# ========================================
+# ============================================
+# Environment Variables (Security Critical)
+# ============================================
 .env
+.env.local
+.env.*.local
+.env.staging
+.env.production
+!.env.example
+
+# ============================================
+angular-ui
+ENVIRONMENT_SETUP.md

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using UserAPI.Models.DTOs;
 using UserAPI.Services.Interfaces;
+using UserAPI.Services;
 
 namespace UserAPI.Controllers;
 
@@ -14,11 +15,13 @@ public class UserController : ControllerBase
 {
     private readonly IUserService _userService;
     private readonly ILogger<UserController> _logger;
+    private readonly TokenService _tokenService;
 
-    public UserController(IUserService userService, ILogger<UserController> logger)
+    public UserController(IUserService userService, ILogger<UserController> logger, TokenService tokenService)
     {
         _userService = userService;
         _logger = logger;
+        _tokenService = tokenService;
     }
 
     /// <summary>
@@ -241,14 +244,14 @@ public class UserController : ControllerBase
     }
 
     /// <summary>
-    /// Authenticates a user.
+    /// Authenticates a user and returns a secure token.
     /// </summary>
     /// <param name="loginDto">The login credentials.</param>
-    /// <returns>The authenticated user.</returns>
+    /// <returns>The authentication token and user information.</returns>
     /// <response code="200">Authentication successful.</response>
     /// <response code="401">Invalid credentials.</response>
     [HttpPost("authenticate")]
-    [ProducesResponseType(typeof(UserResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Authenticate([FromBody] LoginRequestDto loginDto)
     {
@@ -264,7 +267,29 @@ public class UserController : ControllerBase
             {
                 return Unauthorized(new { error = "Invalid username/email or password" });
             }
-            return Ok(user);
+
+            // Get the full user entity to generate token
+            var userEntity = await _userService.GetUserByUsernameAsync(user.Username);
+            if (userEntity == null)
+            {
+                return Unauthorized(new { error = "User data not found" });
+            }
+
+            // Generate secure token
+            var token = _tokenService.GenerateToken(new UserAPI.Models.Entities.User
+            {
+                Id = userEntity.Id,
+                Username = userEntity.Username,
+                Role = userEntity.Role ?? UserAPI.Models.Entities.UserRole.User
+            });
+
+            var response = new AuthResponseDto
+            {
+                Token = token,
+                User = user
+            };
+
+            return Ok(response);
         }
         catch (Exception ex)
         {
@@ -274,53 +299,48 @@ public class UserController : ControllerBase
     }
 
     /// <summary>
-    /// Assigns a role to a user. Only administrators can perform this action.
+    /// Validates a token and returns user information.
     /// </summary>
-    /// <param name="username">The username of the user to assign the role to.</param>
-    /// <param name="assignRoleDto">The role assignment data.</param>
-    /// <returns>The updated user.</returns>
-    /// <response code="200">Role assigned successfully.</response>
-    /// <response code="403">Forbidden - only admins can assign roles.</response>
-    /// <response code="404">User not found.</response>
-    /// <response code="400">Invalid role assignment data.</response>
-    [HttpPost("{username}/assign-role")]
-    [ProducesResponseType(typeof(UserResponseDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> AssignRole(string username, [FromBody] AssignRoleDto assignRoleDto)
+    /// <returns>The token validation result.</returns>
+    /// <response code="200">Token is valid.</response>
+    /// <response code="401">Token is invalid or expired.</response>
+    [HttpPost("validate-token")]
+    [ProducesResponseType(typeof(TokenValidationResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public IActionResult ValidateToken()
     {
         try
         {
-            if (!ModelState.IsValid)
+            // Get token from Authorization header
+            if (!Request.Headers.TryGetValue("Authorization", out var authHeader))
             {
-                return BadRequest(ModelState);
+                return Unauthorized(new TokenValidationResponse { IsValid = false });
             }
 
-            // In a real implementation, get the requesting user from the authentication context
-            // For now, we'll need to pass it as a header or query parameter
-            // This is a simplified implementation for demo purposes
-            var requestingUsername = HttpContext.Request.Headers["X-Requesting-User"].ToString();
-            if (string.IsNullOrEmpty(requestingUsername))
+            var token = authHeader.ToString();
+            if (token.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
             {
-                return BadRequest(new { error = "X-Requesting-User header is required" });
+                token = token.Substring("Bearer ".Length).Trim();
             }
 
-            var updatedUser = await _userService.AssignRoleAsync(username, assignRoleDto.Role, requestingUsername);
-            if (updatedUser == null)
+            var userInfo = _tokenService.ValidateToken(token);
+            if (userInfo == null)
             {
-                return NotFound(new { error = "User not found" });
+                return Unauthorized(new TokenValidationResponse { IsValid = false });
             }
-            return Ok(updatedUser);
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return Forbid(ex.Message);
+
+            return Ok(new TokenValidationResponse
+            {
+                IsValid = true,
+                UserId = userInfo.Value.UserId,
+                Username = userInfo.Value.Username,
+                Role = userInfo.Value.Role.ToString()
+            });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error assigning role to user {Username}", username);
-            return StatusCode(500, new { error = "An error occurred while assigning the role" });
+            _logger.LogError(ex, "Error validating token");
+            return Unauthorized(new TokenValidationResponse { IsValid = false });
         }
     }
 }
@@ -339,4 +359,15 @@ public class LoginRequestDto
     /// User's password.
     /// </summary>
     public string Password { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Response model for token validation.
+/// </summary>
+public class TokenValidationResponse
+{
+    public bool IsValid { get; set; }
+    public Guid UserId { get; set; }
+    public string Username { get; set; } = string.Empty;
+    public string Role { get; set; } = string.Empty;
 }

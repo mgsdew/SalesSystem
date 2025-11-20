@@ -1,0 +1,62 @@
+# Azure DevOps Release Pipeline
+# Create this as a Release Pipeline in Azure DevOps
+
+# Stage 1: Deploy to Staging
+- stage: DeployToStaging
+  displayName: 'Deploy to Staging'
+  dependsOn: []  # Independent stage
+  jobs:
+  - deployment: DeployStaging
+    displayName: 'Deploy to Staging Environment'
+    environment: 'staging'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: DownloadBuildArtifacts@0
+            displayName: 'Download Build Artifacts'
+            inputs:
+              downloadType: 'single'
+              artifactName: 'drop'
+              downloadPath: '$(System.ArtifactsDirectory)'
+
+          - task: DockerCompose@0
+            displayName: 'Deploy to Staging'
+            inputs:
+              dockerComposeFile: 'docker-compose.staging.yml'
+              action: 'Run services'
+              detached: true
+
+# Stage 2: Deploy to Production
+- stage: DeployToProduction
+  displayName: 'Deploy to Production'
+  dependsOn: DeployToStaging
+  condition: succeeded()
+  jobs:
+  - deployment: DeployProduction
+    displayName: 'Deploy to Production Environment'
+    environment: 'production'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: DownloadBuildArtifacts@0
+            displayName: 'Download Build Artifacts'
+            inputs:
+              downloadType: 'single'
+              artifactName: 'drop'
+              downloadPath: '$(System.ArtifactsDirectory)'
+
+          - task: DockerCompose@0
+            displayName: 'Deploy to Production'
+            inputs:
+              dockerComposeFile: 'docker-compose.prod.yml'
+              action: 'Run services'
+              detached: true
+
+          - task: AzureAppServiceManage@0
+            displayName: 'Start App Service'
+            inputs:
+              azureSubscription: 'your-azure-subscription'
+              Action: 'Start Azure App Service'
+              WebAppName: 'your-app-service-name'

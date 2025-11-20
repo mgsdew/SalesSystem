@@ -101,20 +101,22 @@ public class CardPaymentController : ControllerBase
     }
 
     /// <summary>
-    /// Deletes card payment records by card number.
+    /// Deletes card payment records by card number. Requires Admin role.
     /// </summary>
     /// <param name="cardNumber">The card number to delete records for.</param>
     /// <param name="cancellationToken">Cancellation token for async operation.</param>
     /// <returns>A response indicating whether the deletion was successful.</returns>
     /// <response code="200">Records deleted successfully.</response>
     /// <response code="400">If the card number is invalid.</response>
+    /// <response code="403">If user does not have Admin role.</response>
     /// <response code="404">If no records found for the card number.</response>
     /// <response code="401">If authentication token is missing or invalid.</response>
     /// <response code="500">If an internal server error occurs.</response>
-    /// <remarks>This endpoint requires authentication via Authorization header.</remarks>
+    /// <remarks>This endpoint requires authentication and Admin role via Authorization header.</remarks>
     [HttpDelete("delete/{cardNumber}")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
@@ -125,6 +127,20 @@ public class CardPaymentController : ControllerBase
         try
         {
             _logger.LogInformation("Received delete request for card number: {CardNumber}", cardNumber);
+
+            // Check if user has Admin role
+            var userRole = HttpContext.Items["UserRole"]?.ToString();
+            if (userRole != "Admin")
+            {
+                _logger.LogWarning("Unauthorized delete attempt by user with role: {Role}", userRole);
+                return StatusCode(StatusCodes.Status403Forbidden, new ProblemDetails
+                {
+                    Status = StatusCodes.Status403Forbidden,
+                    Title = "Forbidden",
+                    Detail = "Admin role required to delete card payment records",
+                    Instance = HttpContext.Request.Path
+                });
+            }
 
             if (string.IsNullOrWhiteSpace(cardNumber))
             {

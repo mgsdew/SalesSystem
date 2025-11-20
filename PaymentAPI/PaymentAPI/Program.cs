@@ -182,7 +182,7 @@ app.UseHttpsRedirection();
 app.UseCors("AllowAll");
 
 // Use custom authentication middleware 
-// app.UseAuthTokenMiddleware();
+app.UseAuthTokenMiddleware();
 
 app.UseAuthorization();
 

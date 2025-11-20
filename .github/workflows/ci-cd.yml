@@ -1,0 +1,46 @@
+name: SalesSystem CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: 8.0.x
+
+    - name: Restore dependencies
+      run: |
+        dotnet restore PaymentAPI/PaymentAPI.sln
+        dotnet restore UserAPI/UserAPI.sln
+
+    - name: Build
+      run: |
+        dotnet build PaymentAPI/PaymentAPI.sln --configuration Release --no-restore
+        dotnet build UserAPI/UserAPI.sln --configuration Release --no-restore
+
+    - name: Test
+      run: |
+        dotnet test PaymentAPI/PaymentAPI.Tests --configuration Release --no-build --verbosity normal
+        dotnet test UserAPI/UserAPI.Tests --configuration Release --no-build --verbosity normal
+
+    - name: Build Docker images
+      run: docker-compose build
+
+  deploy:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+    - name: Deploy to staging
+      run: echo "Deploy to staging environment"

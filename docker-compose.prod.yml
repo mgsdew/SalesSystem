@@ -1,0 +1,154 @@
+version: '3.8'
+
+# SalesSystem - Production Environment Configuration
+# This configuration is used for production deployments
+
+services:
+  # ============================================
+  # Database Services (Production)
+  # ============================================
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: salessystem-prod-sqlserver
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=${DB_PASSWORD_PROD}
+      - MSSQL_PID=Express  # Use Express for production cost optimization
+    ports:
+      - "1435:1433"  # Different port for production
+    volumes:
+      - sqlserver-prod-data:/var/opt/mssql
+    networks:
+      - salessystem-prod-network
+    restart: unless-stopped
+    healthcheck:
+      test: /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P ${DB_PASSWORD_PROD} -Q "SELECT 1" || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # Redis for production caching
+  redis:
+    image: redis:7-alpine
+    container_name: salessystem-prod-redis
+    ports:
+      - "6380:6379"  # Different port for production
+    volumes:
+      - redis-prod-data:/data
+    networks:
+      - salessystem-prod-network
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # RabbitMQ for production
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: salessystem-prod-rabbitmq
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD}
+    ports:
+      - "5674:5672"   # Different ports for production
+      - "15674:15672"
+    volumes:
+      - rabbitmq-prod-data:/var/lib/rabbitmq
+    networks:
+      - salessystem-prod-network
+    restart: unless-stopped
+
+  # Consul for production service discovery
+  consul:
+    image: consul:1.15
+    container_name: salessystem-prod-consul
+    ports:
+      - "8501:8500"   # Different ports for production
+      - "8601:8600"
+    command: agent -server -bootstrap -ui -client=0.0.0.0 -log-level=warn
+    volumes:
+      - consul-prod-data:/consul/data
+    networks:
+      - salessystem-prod-network
+    restart: unless-stopped
+
+  # ============================================
+  # Microservices (Production)
+  # ============================================
+
+  paymentapi:
+    build:
+      context: ./PaymentAPI
+      dockerfile: Dockerfile.prod  # Use production Dockerfile
+    container_name: salessystem-prod-paymentapi
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=PaymentDB_Prod;User Id=sa;Password=${DB_PASSWORD_PROD};TrustServerCertificate=True;MultipleActiveResultSets=true
+      - USERAPI_URL=http://userapi:80
+      - AUTH_VALID_TOKENS=${AUTH_VALID_TOKENS_PROD}
+    ports:
+      - "7159:80"  # Different ports for production
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      userapi:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - salessystem-prod-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/api/CardPayment/health"]
+      interval: 60s
+      timeout: 30s
+      retries: 3
+      start_period: 120s
+
+  userapi:
+    build:
+      context: ./UserAPI
+      dockerfile: Dockerfile.prod  # Use production Dockerfile
+    container_name: salessystem-prod-userapi
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=UserDB_Prod;User Id=sa;Password=${DB_PASSWORD_PROD};TrustServerCertificate=True;MultipleActiveResultSets=true
+      - AUTH_VALID_TOKENS=${AUTH_VALID_TOKENS_PROD}
+    ports:
+      - "7160:80"  # Different ports for production
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - salessystem-prod-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 60s
+      timeout: 30s
+      retries: 3
+      start_period: 120s
+
+networks:
+  salessystem-prod-network:
+    driver: bridge
+    name: salessystem-prod-network
+
+volumes:
+  sqlserver-prod-data:
+    name: salessystem-prod-sqlserver-data
+  redis-prod-data:
+    name: salessystem-prod-redis-data
+  rabbitmq-prod-data:
+    name: salessystem-prod-rabbitmq-data
+  consul-prod-data:
+    name: salessystem-prod-consul-data

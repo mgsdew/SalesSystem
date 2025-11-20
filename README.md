@@ -333,25 +333,36 @@ AUTH_VALID_TOKENS=dev-token-123456;test-token-abcdef;your-secret-token-here
 
 > **⚠️ Important:** In production, never commit the `.env` file to version control. The current `.gitignore` has this commented out for demonstration purposes only.
 
-#### 3. Run Individual Microservices
+## 🔧 Environment Configuration
 
-**PaymentAPI:**
+### Quick Setup
 ```bash
-cd PaymentAPI
+# 1. Copy environment template
+cp .env.example .env
 
-# Restore dependencies
-dotnet restore
+# 2. Edit .env with your values
+# See ENVIRONMENT_SETUP.md for detailed instructions
 
-# Build
-dotnet build
-
-# Run (Linux/Mac)
-export $(cat ../.env | xargs) && dotnet run --project PaymentAPI/PaymentAPI.csproj
-
-# Run (Windows PowerShell)
-$env:AUTH_VALID_TOKENS="dev-token-123456;test-token-abcdef;your-secret-token-here"
-dotnet run --project PaymentAPI/PaymentAPI.csproj
+# 3. Validate configuration
+./validate-environment.ps1 -Environment Development
+# or
+setup-env.bat check
 ```
+
+### Environment Files
+- **`.env`** - Active environment configuration (ignored by git)
+- **`.env.example`** - Template with all required variables
+- **`.env.staging`** - Staging environment configuration
+- **`.env.production`** - Production environment configuration
+
+### Key Variables
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `AUTH_VALID_TOKENS` | API authentication tokens | ✅ |
+| `DB_CONNECTION_STRING` | Database connection string | ✅ |
+| `TOKEN_ENCRYPTION_KEY` | AES encryption key (32 chars) | ✅ |
+| `USERAPI_URL` | UserAPI service URL | ✅ |
+| `PAYMENTAPI_URL` | PaymentAPI service URL | ✅ 
 
 #### 4. Using Docker Compose (Recommended for Multiple Services)
 ```bash

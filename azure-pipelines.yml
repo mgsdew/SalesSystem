@@ -1,0 +1,72 @@
+# SalesSystem Azure DevOps Pipeline
+# Save this as azure-pipelines.yml in your repository root
+
+trigger:
+- main
+- develop
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  buildConfiguration: 'Release'
+  dotnetSdkVersion: '8.0.x'
+
+steps:
+- task: UseDotNet@2
+  displayName: 'Install .NET SDK'
+  inputs:
+    version: '$(dotnetSdkVersion)'
+
+- task: DotNetCoreCLI@2
+  displayName: 'Restore PaymentAPI'
+  inputs:
+    command: 'restore'
+    projects: 'PaymentAPI/PaymentAPI.sln'
+
+- task: DotNetCoreCLI@2
+  displayName: 'Restore UserAPI'
+  inputs:
+    command: 'restore'
+    projects: 'UserAPI/UserAPI.sln'
+
+- task: DotNetCoreCLI@2
+  displayName: 'Build PaymentAPI'
+  inputs:
+    command: 'build'
+    projects: 'PaymentAPI/PaymentAPI.sln'
+    arguments: '--configuration $(buildConfiguration)'
+
+- task: DotNetCoreCLI@2
+  displayName: 'Build UserAPI'
+  inputs:
+    command: 'build'
+    projects: 'UserAPI/UserAPI.sln'
+    arguments: '--configuration $(buildConfiguration)'
+
+- task: DotNetCoreCLI@2
+  displayName: 'Test PaymentAPI'
+  inputs:
+    command: 'test'
+    projects: 'PaymentAPI/PaymentAPI.Tests'
+    arguments: '--configuration $(buildConfiguration) --collect "Code coverage"'
+
+- task: DotNetCoreCLI@2
+  displayName: 'Test UserAPI'
+  inputs:
+    command: 'test'
+    projects: 'UserAPI/UserAPI.Tests'
+    arguments: '--configuration $(buildConfiguration) --collect "Code coverage"'
+
+- task: DockerCompose@0
+  displayName: 'Build Docker images'
+  inputs:
+    dockerComposeFile: 'docker-compose.yml'
+    action: 'Build services'
+
+- task: PublishBuildArtifacts@1
+  displayName: 'Publish build artifacts'
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+    ArtifactName: 'drop'
+    publishLocation: 'Container'

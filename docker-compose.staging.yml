@@ -1,0 +1,100 @@
+version: '3.8'
+
+# SalesSystem - Staging Environment Configuration
+# This configuration is used for staging deployments
+
+services:
+  # ============================================
+  # Database Services (Staging)
+  # ============================================
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: salessystem-staging-sqlserver
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=${DB_PASSWORD_STAGING}
+      - MSSQL_PID=Developer
+    ports:
+      - "1434:1433"  # Different port for staging
+    volumes:
+      - sqlserver-staging-data:/var/opt/mssql
+    networks:
+      - salessystem-staging-network
+    restart: unless-stopped
+    healthcheck:
+      test: /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P ${DB_PASSWORD_STAGING} -Q "SELECT 1" || exit 1
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  # RabbitMQ for staging
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: salessystem-staging-rabbitmq
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD}
+    ports:
+      - "5673:5672"   # Different ports for staging
+      - "15673:15672"
+    volumes:
+      - rabbitmq-staging-data:/var/lib/rabbitmq
+    networks:
+      - salessystem-staging-network
+    restart: unless-stopped
+
+  # ============================================
+  # Microservices (Staging)
+  # ============================================
+
+  paymentapi:
+    build:
+      context: ./PaymentAPI
+      dockerfile: Dockerfile
+    container_name: salessystem-staging-paymentapi
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Staging
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=PaymentDB_Staging;User Id=sa;Password=${DB_PASSWORD_STAGING};TrustServerCertificate=True;MultipleActiveResultSets=true
+      - USERAPI_URL=http://userapi:80
+    ports:
+      - "6159:80"  # Different ports for staging
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      userapi:
+        condition: service_healthy
+    networks:
+      - salessystem-staging-network
+    restart: unless-stopped
+
+  userapi:
+    build:
+      context: ./UserAPI
+      dockerfile: Dockerfile
+    container_name: salessystem-staging-userapi
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Staging
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=UserDB_Staging;User Id=sa;Password=${DB_PASSWORD_STAGING};TrustServerCertificate=True;MultipleActiveResultSets=true
+    ports:
+      - "6160:80"  # Different ports for staging
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    networks:
+      - salessystem-staging-network
+    restart: unless-stopped
+
+networks:
+  salessystem-staging-network:
+    driver: bridge
+    name: salessystem-staging-network
+
+volumes:
+  sqlserver-staging-data:
+    name: salessystem-staging-sqlserver-data
+  rabbitmq-staging-data:
+    name: salessystem-staging-rabbitmq-data

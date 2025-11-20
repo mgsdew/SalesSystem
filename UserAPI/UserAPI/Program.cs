@@ -41,6 +41,7 @@ builder.Services.AddDbContext<UserDbContext>(options =>
 // Register application services with Dependency Injection
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<TokenService>();
 
 // Configure logging
 builder.Logging.ClearProviders();

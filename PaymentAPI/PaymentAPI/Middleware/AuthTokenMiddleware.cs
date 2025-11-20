@@ -1,19 +1,21 @@
 namespace PaymentAPI.Middleware;
 
 /// <summary>
-/// Middleware for validating authentication tokens in API requests.
+/// Middleware for validating authentication tokens with user context.
 /// </summary>
 public class AuthTokenMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly ILogger<AuthTokenMiddleware> _logger;
     private readonly IConfiguration _configuration;
+    private readonly HttpClient _httpClient;
 
     public AuthTokenMiddleware(RequestDelegate next, ILogger<AuthTokenMiddleware> logger, IConfiguration configuration)
     {
         _next = next;
         _logger = logger;
         _configuration = configuration;
+        _httpClient = new HttpClient();
     }
 
     public async Task InvokeAsync(HttpContext context)
@@ -49,8 +51,9 @@ public class AuthTokenMiddleware
             token = token.Substring("Bearer ".Length).Trim();
         }
 
-        // Validate token
-        if (!ValidateToken(token))
+        // Validate token with UserAPI
+        var userInfo = await ValidateTokenWithUserAPI(token);
+        if (userInfo == null)
         {
             _logger.LogWarning("Invalid token attempt from {IpAddress}", 
                 context.Connection.RemoteIpAddress);
@@ -61,43 +64,57 @@ public class AuthTokenMiddleware
             return;
         }
 
-        _logger.LogInformation("Request authorized successfully for {Path}", context.Request.Path);
+        // Store user information in HttpContext for controllers to access
+        context.Items["UserId"] = userInfo.Value.UserId;
+        context.Items["Username"] = userInfo.Value.Username;
+        context.Items["UserRole"] = userInfo.Value.Role;
+
+        _logger.LogInformation("Request authorized successfully for user {Username} with role {Role}", 
+            userInfo.Value.Username, userInfo.Value.Role);
 
         // Token is valid, proceed to the next middleware
         await _next(context);
     }
 
-    private bool ValidateToken(string token)
+    private async Task<(Guid UserId, string Username, string Role)?> ValidateTokenWithUserAPI(string token)
     {
-        // Get valid tokens from environment variable first, fall back to configuration
-        var validTokensString = Environment.GetEnvironmentVariable("AUTH_VALID_TOKENS");
-        
-        string[]? validTokens = null;
+        try
+        {
+            var userApiUrl = Environment.GetEnvironmentVariable("USERAPI_URL") ?? 
+                           _configuration["ServiceUrls:UserApi"] ?? 
+                           "http://localhost:5160";
 
-        if (!string.IsNullOrEmpty(validTokensString))
-        {
-            // Parse tokens from environment variable (semicolon-separated)
-            validTokens = validTokensString.Split(';', StringSplitOptions.RemoveEmptyEntries)
-                                          .Select(t => t.Trim())
-                                          .Where(t => !string.IsNullOrEmpty(t))
-                                          .ToArray();
-        }
-        else
-        {
-            // Fall back to configuration from appsettings
-            validTokens = _configuration.GetSection("Authentication:ValidTokens").Get<string[]>();
-        }
-        
-        if (validTokens == null || validTokens.Length == 0)
-        {
-            _logger.LogWarning("No valid tokens configured. Set AUTH_VALID_TOKENS environment variable or configure in appsettings");
-            return false;
-        }
+            var request = new HttpRequestMessage(HttpMethod.Post, $"{userApiUrl}/api/User/validate-token");
+            request.Headers.Add("Authorization", $"Bearer {token}");
 
-        // Check if the provided token matches any valid token
-        return validTokens.Any(validToken => 
-            string.Equals(token, validToken, StringComparison.Ordinal));
+            var response = await _httpClient.SendAsync(request);
+            
+            if (!response.IsSuccessStatusCode)
+                return null;
+
+            var content = await response.Content.ReadAsStringAsync();
+            var tokenValidation = System.Text.Json.JsonSerializer.Deserialize<TokenValidationResponse>(content);
+            
+            return tokenValidation?.IsValid == true ? 
+                (tokenValidation.UserId, tokenValidation.Username, tokenValidation.Role) : null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error validating token with UserAPI");
+            return null;
+        }
     }
+}
+
+/// <summary>
+/// Response model for token validation.
+/// </summary>
+public class TokenValidationResponse
+{
+    public bool IsValid { get; set; }
+    public Guid UserId { get; set; }
+    public string Username { get; set; } = string.Empty;
+    public string Role { get; set; } = string.Empty;
 }
 
 /// <summary>
